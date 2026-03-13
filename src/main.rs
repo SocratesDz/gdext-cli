@@ -11,6 +11,7 @@ use startproject_gen::handle_startproject;
 mod startproject_gen;
 use template_gen::handle_template;
 mod template_gen;
+mod tui;
 
 #[derive(Parser)]
 #[command(name = "gdext-cli")]
@@ -21,7 +22,10 @@ mod template_gen;
 )]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
+    /// Launch the interactive TUI wizard (experimental)
+    #[arg(long)]
+    experimental_wizard: bool,
 }
 
 #[derive(Subcommand)]
@@ -53,13 +57,21 @@ enum Commands {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    if cli.experimental_wizard {
+        return tui::run_wizard();
+    }
+
     match cli.command {
-        Commands::Startproject {
+        Some(Commands::Startproject {
             script,
             name,
             godot_dir,
-        } => handle_startproject(&script, &name, &godot_dir),
-        Commands::Script { name, typenode } => handle_script(&name, &typenode),
-        Commands::Template { name } => handle_template(&name),
+        }) => handle_startproject(&script, &name, &godot_dir),
+        Some(Commands::Script { name, typenode }) => handle_script(&name, &typenode),
+        Some(Commands::Template { name }) => handle_template(&name),
+        None => {
+            eprintln!("No subcommand provided. Use --help for usage information.");
+            std::process::exit(1);
+        }
     }
 }
